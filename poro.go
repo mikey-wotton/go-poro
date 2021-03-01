@@ -4,6 +4,7 @@ import (
 	"fmt"
 	league "github.com/mikey-wotton/go-league"
 	"golang.org/x/net/html"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -16,40 +17,57 @@ const (
 )
 
 const (
-	base         = "https://www.leagueofgraphs.com"
-	championPath = "/summoner/champions"
-	tagURL       = base + championPath
-)
-
-const (
 	mozillaUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.190 Safari/537.36"
 )
 
-func GetSummoner(region league.Region, summoner SummonerName, champion ChampName) (*Summoner, error) {
+type Poro struct {
+	config Config
+}
+
+func New(c Config) *Poro {
+	return &Poro{c}
+}
+
+func (p Poro) leagueOfGraphSummonerChampionURL(championURI, summonerURI string, region league.Region) string {
+
+	url := fmt.Sprintf(p.config.tagURL+"/%s/%s/%s", championURI, region, summonerURI)
+
+	return strings.ToLower(url)
+}
+
+func (p Poro) getURL(region league.Region, summoner SummonerName, champion ChampName) (string, error) {
 	if !region.Valid() {
-		return nil, fmt.Errorf("unknown region '%s' provided", region)
+		return "", fmt.Errorf("unknown region '%s' provided", region)
 	}
 
 	valid, err := champion.Valid()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if !valid {
-		return nil, fmt.Errorf("unknown champion '%s' provided", champion)
+		return "", fmt.Errorf("unknown champion '%s' provided", champion)
 	}
 
 	championURI, err := champion.ToURI()
 	if err != nil {
+		return "", err
+	}
+
+	return p.leagueOfGraphSummonerChampionURL(championURI, summoner.ToURI(), region), nil
+}
+
+func (p Poro) GetSummoner(region league.Region, summoner SummonerName, champion ChampName) (*Summoner, error) {
+	url, err  := p.getURL(region, summoner, champion)
+	if err != nil {
 		return nil, err
 	}
 
-	url := strings.ToLower(fmt.Sprintf(tagURL+"/%s/%s/%s", championURI, region, summoner.ToURI()))
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("User-Agent",mozillaUserAgent )
+	req.Header.Set("User-Agent", mozillaUserAgent)
 
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -57,7 +75,25 @@ func GetSummoner(region league.Region, summoner SummonerName, champion ChampName
 	}
 	defer response.Body.Close()
 
-	z := html.NewTokenizer(response.Body)
+	tags, err := parseTags(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Summoner{
+		Name:   summoner,
+		Region: region,
+		Champions: []*Champion{
+			{
+				Name: champion,
+				Tags: tags,
+			},
+		},
+	}, nil
+}
+
+func parseTags(body io.ReadCloser) ([]*Tag, error) {
+	z := html.NewTokenizer(body)
 
 	tags := make([]*Tag, 0)
 	end := false
@@ -87,16 +123,7 @@ func GetSummoner(region league.Region, summoner SummonerName, champion ChampName
 		}
 	}
 
-	return &Summoner{
-		Name:   summoner,
-		Region: region,
-		Champions: []*Champion{
-			{
-				Name: champion,
-				Tags: tags,
-			},
-		},
-	}, nil
+	return tags, nil
 }
 
 func getTag(attributes []html.Attribute) (*Tag, error) {

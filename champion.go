@@ -1,7 +1,6 @@
 package go_poro
 
 import (
-	"log"
 	"regexp"
 	"strings"
 
@@ -18,7 +17,7 @@ type ChampName league.ChampionName
 func (c ChampName) Valid() (bool, error) {
 	reg, err := regexp.Compile("[^a-zA-Z]+")
 	if err != nil {
-		log.Fatal(err)
+		return false, err
 	}
 
 	champName, err := c.ToURI()
@@ -49,7 +48,6 @@ func (c ChampName) ToURI() (string, error) {
 
 
 var validChampNames = []league.ChampionName{
-	league.ChampionNameUnknown,
 	league.ChampionNameAatrox,
 	league.ChampionNameAhri,
 	league.ChampionNameAkali,
