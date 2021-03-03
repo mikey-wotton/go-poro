@@ -12,17 +12,17 @@ func TestChampName_ToURI(t *testing.T) {
 		expValid bool
 		expErr error
 	}{
-		"Name with multiple spaces ok: Nunu and Willump to nunuandWillump": {
+		"name with multiple spaces ok: Nunu and Willump to nunuandWillump": {
 			champName: "Aurelion Sol",
 			expValid: true,
 			expErr: nil,
 		},
-		"Name with a ' ok: Kai'Sa to kaisa": {
+		"name with a ' ok: Kai'Sa to kaisa": {
 			champName: "Kai'Sa",
 			expValid: true,
 			expErr: nil,
 		},
-		"Name with a space ok: Aurelion Sol to aureliansol": {
+		"name with a space ok: Aurelion Sol to aureliansol": {
 			champName: "aurelion Sol",
 			expValid: true,
 			expErr: nil,

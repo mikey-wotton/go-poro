@@ -1,20 +1,35 @@
 package go_poro
 
-const (
-	base         = "https://www.leagueofgraphs.com"
-	championPath = "/summoner/champions"
-)
-
 type Config struct {
 	BaseURL string
 	ChampionPath string
 	tagURL string
 }
 
-func DefaultConfig() Config {
-	return Config{
+func NewConfig(opts ...ConfigOption) Config {
+	const (
+		base         = "https://www.leagueofgraphs.com"
+		championPath = "/summoner/champions"
+	)
+
+	conf := Config{
 		BaseURL: base,
 		ChampionPath: championPath,
-		tagURL: base + championPath,
+	}
+
+	for _, opt := range opts {
+		opt(&conf)
+	}
+
+	conf.tagURL = conf.BaseURL + conf.ChampionPath
+
+	return conf
+}
+
+type ConfigOption = func(*Config)
+
+func ConfigBaseUrlOpt(url string) ConfigOption {
+	return func(c *Config) {
+		c.BaseURL = url
 	}
 }
